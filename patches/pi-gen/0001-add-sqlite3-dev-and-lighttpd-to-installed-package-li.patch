@@ -1,0 +1,22 @@
+From 6bc63d97a9b532b0d8898108427806a98c204c87 Mon Sep 17 00:00:00 2001
+From: Iain Hunter <drhunter95@gmail.com>
+Date: Mon, 7 Feb 2022 08:49:30 +0000
+Subject: [PATCH] add sqlite3-dev and lighttpd to installed package list
+
+---
+ stage2/01-sys-tweaks/00-packages | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/stage2/01-sys-tweaks/00-packages b/stage2/01-sys-tweaks/00-packages
+index 7656f03..f417fb4 100644
+--- a/stage2/01-sys-tweaks/00-packages
++++ b/stage2/01-sys-tweaks/00-packages
+@@ -32,3 +32,5 @@ rpi-eeprom
+ raspinfo
+ udisks2
+ unzip zip p7zip-full
++libsqlite3-dev
++lighttpd
+-- 
+2.25.1
+

@@ -1,0 +1,292 @@
+From 82a903885840440169336da5f5bd34703e26dc2a Mon Sep 17 00:00:00 2001
+From: Iain Hunter <drhunter95@gmail.com>
+Date: Fri, 8 Oct 2021 16:33:02 +0100
+Subject: [PATCH 7/7] update ads1018 driver to 8 bit mode and also overlay to
+ channel 0
+
+---
+ .../overlays/ina-evaluation-board-overlay.dts |   8 +-
+ drivers/iio/adc/ti-ads1018.c                  | 112 +++++-------------
+ 2 files changed, 32 insertions(+), 88 deletions(-)
+
+diff --git a/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts b/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts
+index e0db40e41ec1..2f50d82305ed 100644
+--- a/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts
++++ b/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts
+@@ -60,14 +60,14 @@ iio_adc@0{
+ 				compatible = "ti,ads1018";
+ 				reg = <0x0>;
+ 				#io-channel-cells = <1>;
+-				spi-max-frequency = <100000>; 
++				spi-max-frequency = <400000>; 
+ 				spi-cpha;
+ 
+ 				#address-cells = <1>;
+ 				#size-cells = <0>;
+-				// Set up ADS1018 for AIN1
+-				channel@5{
+-					reg = <5>;      	// for AIN1
++				// Set up ADS1018 for AIN0
++				channel@4{
++					reg = <4>;      	// for AIN0
+ 					ti,gain = <2>;  	// 2.048V range
+ 					ti,datarate = <5>; 	// 2.4kHz sampling
+ 				};
+diff --git a/drivers/iio/adc/ti-ads1018.c b/drivers/iio/adc/ti-ads1018.c
+index 2e648a1ec1b8..340ba912ee65 100644
+--- a/drivers/iio/adc/ti-ads1018.c
++++ b/drivers/iio/adc/ti-ads1018.c
+@@ -1,9 +1,9 @@
+ /*
+  * ADS1018 - Texas Instruments Analog-to-Digital Converter
+  *
+- * Copyright 2019 Iain Hunter <iain@hunterembedded.co.uk>
++ * Copyright 2021 Iain Hunter <iain@hunterembedded.co.uk>
+  *
+- * Based on ti-ads1018.c
++ * Based on ti-ads1015.c
+  * Copyright (c) 2016, Intel Corporation.
+  *
+  * This file is subject to the terms and conditions of version 2 of
+@@ -31,8 +31,6 @@
+ #include <linux/iio/triggered_buffer.h>
+ #include <linux/iio/trigger_consumer.h>
+ 
+-#define MODE8BIT
+-
+ #define ADS1018_DRV_NAME "ads1018"
+ 
+ #define TI_ADS1018_START_SINGLE_SHOT    	BIT(15)
+@@ -180,13 +178,12 @@ static int ads1018_fullscale_range[] = {
+ 
+ struct ti_ads1018_state {
+ 	struct spi_device	*spi;
+-	struct spi_transfer	scan_single_xfer[2];
++	struct spi_transfer	scan_single_xfer[1];
++
+ 	struct spi_message	scan_single_msg;
+ 
+-//	struct regulator	*reg;
+-//	unsigned int		vref_mv;
+ 
+-        struct iio_trigger	*trig;
++	struct iio_trigger	*trig;
+ 	/*
+ 	 * Protects ADC ops, e.g: concurrent sysfs/buffered
+ 	 * data reads, configuration updates
+@@ -203,7 +200,6 @@ struct ti_ads1018_state {
+ 	 */
+ 	bool 	conv_invalid;
+ 
+-#ifdef MODE8BIT
+ 	/*
+ 	 * DMA (thus cache coherency maintenance) requires the
+ 	 * transfer buffers to live in their own cache lines.
+@@ -211,15 +207,6 @@ struct ti_ads1018_state {
+ 	unsigned char	rx_buf[(ADS1018_CHANNELS + TI_ADS1018_TIMESTAMP_SIZE)*2]
+ 							____cacheline_aligned;
+ 	unsigned char	tx_buf[ADS1018_CHANNELS*2];
+-#else    
+-	/*
+-	 * DMA (thus cache coherency maintenance) requires the
+-	 * transfer buffers to live in their own cache lines.
+-	 */
+-	__be16	rx_buf[ADS1018_CHANNELS + TI_ADS1018_TIMESTAMP_SIZE]
+-							____cacheline_aligned;
+-	__be16	tx_buf[ADS1018_CHANNELS];
+-#endif
+     
+ };
+ 
+@@ -249,34 +236,21 @@ static int ti_ads1018_write_config_register(struct ti_ads1018_state *st, int val
+ {
+ 	int ret;
+ 
+-#ifdef MODE8BIT
+     /* Write new value to the first 2 bytes of the 4 byte SPI transfer	*/
+ 	st->tx_buf[0] = (value & 0xFF00)>>8;
+ 	st->tx_buf[1] = value & 0xFF;
+ 	st->tx_buf[2] = 0x00;
+ 	st->tx_buf[3] = 0x00;
+     
+-    printk(KERN_DEBUG "st->tx_buf %02x %02x\n",st->tx_buf[0], st->tx_buf[1]);
+-
+-#else    
+-        /* Write new value to the first word of the 2 word SPI transfer	*/
+-	st->tx_buf[0] = value;
+-	st->tx_buf[1] = 0x0000;
+-#endif
+ 	ret = spi_sync(st->spi, &st->scan_single_msg);
+-    printk(KERN_DEBUG "spi ti_ads1018_write_config_register() value %04x, ret %d\n",value, ret);
+ 	if (ret)
+ 		return ret;
+ 
+-#ifdef MODE8BIT
+     /* Update the state current config based on result of this write */
+-	st->current_config=(st->rx_buf[3] << 8);
+-	st->current_config|=st->rx_buf[2];
+-    printk(KERN_DEBUG "st->current_config %04x\n",st->current_config);
+-#else
+-    /* Update the state current config based on result of this write */
+-	st->current_config=st->rx_buf[1];
+-#endif	
++    /* the updated config register value is in second 16 bit word    */
++    /* which is third and fourth byte                                */
++	st->current_config=(st->rx_buf[2] << 8);
++	st->current_config|=st->rx_buf[3];
+ 	return 0;
+ }
+ 
+@@ -285,7 +259,7 @@ static int ti_ads1018_write_config_register(struct ti_ads1018_state *st, int val
+ static int ads1018_set_power_state(struct ti_ads1018_state *st, bool on)
+ {
+ 	int ret;
+-        struct spi_device *spi = st->spi;
++	struct spi_device *spi = st->spi;
+ 	struct device *dev = &(spi->dev);
+ 
+ 	if (on) {
+@@ -311,42 +285,32 @@ int ads1018_get_adc_result(struct ti_ads1018_state *st, int chan, int *val)
+ {
+ 	int ret, pga, dr, conv_time;
+ 	unsigned int old, mask, cfg;
+-        unsigned int cmd;
++	unsigned int cmd;
+ 
+ 	if (chan < 0 || chan >= ADS1018_CHANNELS)
+ 		return -EINVAL;
+ 
+ 
+-        old = st->current_config;
++	old = st->current_config;
+ 
+ 
+-    /* For just a data read cmd is 0x0000
++    /* For just a data read cmd is 0x0000 (or 0xFFFF) to not update config
+ 	 * Assumption is that previously the configuration has been set to
+ 	 * select channel, gain and sampling frequency
+ 	 */ 
+ 	cmd = 0x0000;
+-#ifdef MODE8BIT
++
+ 	st->tx_buf[0] = (cmd & 0xFF00)>>8;
+ 	st->tx_buf[1] = cmd & 0xFF;
+ 	st->tx_buf[2] = 0x00;
+ 	st->tx_buf[3] = 0x00;
+-#else
+-	//cmd=st->settings | (chan << 12);
+-	st->tx_buf[0] = cmd;
+-	st->tx_buf[1] = 0x0000;
+-#endif
+ 	ret = spi_sync(st->spi, &st->scan_single_msg);
+ 
+ 	if (ret)
+ 		return ret;
+ 
+-#ifdef MODE8BIT
+-	*val=(st->rx_buf[1] << 8);
+-	*val|=st->rx_buf[0];
+-#else    
+-    *val = st->rx_buf[0];
+-#endif 
+-
++	*val=(st->rx_buf[0] << 8);
++	*val|=st->rx_buf[1];
+       
+ 	pga = st->channel_data[chan].pga;
+ 	dr = st->channel_data[chan].data_rate;
+@@ -363,7 +327,7 @@ int ads1018_get_adc_result(struct ti_ads1018_state *st, int chan, int *val)
+ 	if (old != cfg || st->conv_invalid) {
+ 		int dr_old; 
+                 
+-                /* Update the configuration to the new one  */
++		/* Update the configuration to the new one  */
+ 		ret = ti_ads1018_write_config_register(st, cfg);
+ 		if (ret)
+ 			return ret;
+@@ -387,10 +351,14 @@ static irqreturn_t ti_ads1018_trigger_handler(int irq, void *p)
+ 	struct iio_poll_func *pf = p;
+ 	struct iio_dev *indio_dev = pf->indio_dev;
+ 	struct ti_ads1018_state *st = iio_priv(indio_dev);
+-	s16 buf[8]; /* 1x s16 ADC val + 3x s16 padding +  4x s16 timestamp */
++	/* Ensure natural alignment of timestamp */
++	struct {
++		s16 chan;
++		s64 timestamp __aligned(8);
++	} scan;
+ 	int chan, ret, res;
+ 
+-	memset(buf, 0, sizeof(buf));
++	memset(&scan, 0, sizeof(scan));
+ 
+ 	mutex_lock(&st->lock);
+ 	chan = find_first_bit(indio_dev->active_scan_mask,
+@@ -401,10 +369,10 @@ static irqreturn_t ti_ads1018_trigger_handler(int irq, void *p)
+ 		goto err;
+ 	}
+ 
+-	buf[0] = res;
++	scan.chan = res;
+ 	mutex_unlock(&st->lock);
+ 
+-	iio_push_to_buffers_with_timestamp(indio_dev, buf,
++	iio_push_to_buffers_with_timestamp(indio_dev, &scan,
+ 					   iio_get_time_ns(indio_dev));
+ 
+ err:
+@@ -624,9 +592,8 @@ static int ads1018_get_channels_config_of(struct spi_device *spi)
+ 		data->channel_data[channel].enabled = 1;		
+ 		data->channel_data[channel].pga = pga;
+ 		data->channel_data[channel].data_rate = data_rate;
+-            
+ 	}
+-
++	
+ 	return 0;
+ }
+ #endif
+@@ -733,7 +700,6 @@ static int ti_ads1018_probe(struct spi_device *spi)
+             	config &= ~(TI_ADS1018_MUX_MASK << TI_ADS1018_MUX_SHIFT);
+ 		config |= (i << TI_ADS1018_MUX_SHIFT);
+           }
+-#ifdef MODE8BIT
+         /*
+          * Always use 4 * 8 bit transfer mode so that the status is read back
+          * in the second 16 bit word. This allows us to track when updated
+@@ -745,31 +711,9 @@ static int ti_ads1018_probe(struct spi_device *spi)
+ 	st->scan_single_xfer[0].len = 4;
+ 	st->scan_single_xfer[0].cs_change = 0; 
+ 	st->scan_single_xfer[0].bits_per_word = 8; 
+-	st->scan_single_xfer[1].tx_buf = &st->tx_buf[2];
+-	st->scan_single_xfer[1].rx_buf = &st->rx_buf[2];
+-	st->scan_single_xfer[1].len = 4;
+-	st->scan_single_xfer[1].cs_change = 0; 
+-	st->scan_single_xfer[1].bits_per_word = 8; 
+-#else
+-        /*
+-         * Always use 2 * 16 bit transfer mode so that the status is read back
+-         * in the second 16 bit word. This allows us to track when updated
+-         * configuration needs to be applied.
+-         */ 
+-          
+-	st->scan_single_xfer[0].tx_buf = &st->tx_buf[0];
+-	st->scan_single_xfer[0].rx_buf = &st->rx_buf[0];
+-	st->scan_single_xfer[0].len = 2;
+-	st->scan_single_xfer[0].cs_change = 0; 
+-	st->scan_single_xfer[0].bits_per_word = 16; 
+-	st->scan_single_xfer[1].tx_buf = &st->tx_buf[1];
+-	st->scan_single_xfer[1].rx_buf = &st->rx_buf[1];
+-	st->scan_single_xfer[1].len = 2;
+-	st->scan_single_xfer[1].cs_change = 0; 
+-	st->scan_single_xfer[1].bits_per_word = 16; 
+-#endif
++
+ 	spi_message_init_with_transfers(&st->scan_single_msg,
+-					st->scan_single_xfer, 2);
++					st->scan_single_xfer, 1);
+ 
+         ret = ti_ads1018_write_config_register(st, config);
+ 	if (ret < 0) {
+-- 
+2.25.1
+

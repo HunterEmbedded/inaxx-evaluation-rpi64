@@ -1,0 +1,58 @@
+From 4581e553b457056877d1700bfc6c20e62e31333d Mon Sep 17 00:00:00 2001
+From: Iain Hunter <drhunter95@gmail.com>
+Date: Mon, 24 Jan 2022 18:04:54 +0000
+Subject: [PATCH 8/8] overlay now matches board v4.1.3 with ina219 and
+ ina180/ads1018
+
+---
+ .../overlays/ina-evaluation-board-overlay.dts | 21 ++-----------------
+ 1 file changed, 2 insertions(+), 19 deletions(-)
+
+diff --git a/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts b/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts
+index 2f50d82305ed..ba52e48df22d 100644
+--- a/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts
++++ b/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts
+@@ -16,30 +16,13 @@ ina219: ina219@40 {
+ 				compatible = "ti,ina219";
+ 				reg = <0x40>;
+ 				/* 0.33ohm fitted */
+-				shunt-resistor = <330000>;
++				shunt-resistor = <33000000>;
+ 				status = "okay";
+ 			};
+ 		};
+ 	};
+ 
+ 	fragment@1 {
+-		target = <&i2c_arm>;
+-		__overlay__ {
+-			#address-cells = <1>;
+-			#size-cells = <0>;
+-
+-			status = "okay";
+-			ina226: ina226@41 {
+-				compatible = "ti,ina226";
+-				reg = <0x41>;
+-				/* 0.33ohm fitted */
+-				shunt-resistor = <330000>;
+-				status = "okay";
+-			};
+-		};
+-	};
+-	
+-	fragment@2 {
+ 		target = <&spi0>;
+ 		__overlay__ {
+ 			#address-cells = <1>;
+@@ -68,7 +51,7 @@ iio_adc@0{
+ 				// Set up ADS1018 for AIN0
+ 				channel@4{
+ 					reg = <4>;      	// for AIN0
+-					ti,gain = <2>;  	// 2.048V range
++					ti,gain = <1>;  	// 4.096V range
+ 					ti,datarate = <5>; 	// 2.4kHz sampling
+ 				};
+ 			};
+-- 
+2.25.1
+

@@ -1,0 +1,290 @@
+From 8ce5fd7c44c4b198f21189d581be051fea10f6f0 Mon Sep 17 00:00:00 2001
+From: Iain Hunter <drhunter95@gmail.com>
+Date: Thu, 7 Oct 2021 15:01:34 +0100
+Subject: [PATCH 4/4] rpi cape - ads1018 driver now 8 bits on spi1
+
+---
+ arch/arm/boot/dts/overlays/Makefile           |  1 +
+ .../overlays/ina-evaluation-board-overlay.dts | 16 ++--
+ .../boot/dts/overlays/spi1-1cs-overlay.dts    |  3 +-
+ .../dts/overlays/spidev-disable-overlay.dts   | 23 ++++++
+ arch/arm64/configs/bcmrpi3_defconfig          |  9 ++-
+ drivers/iio/adc/ti-ads1018.c                  | 75 ++++++++++++++++---
+ 6 files changed, 108 insertions(+), 19 deletions(-)
+ create mode 100644 arch/arm/boot/dts/overlays/spidev-disable-overlay.dts
+
+diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
+index 729155a89352..133711afb3f3 100644
+--- a/arch/arm/boot/dts/overlays/Makefile
++++ b/arch/arm/boot/dts/overlays/Makefile
+@@ -207,6 +207,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
+ 	spi5-2cs.dtbo \
+ 	spi6-1cs.dtbo \
+ 	spi6-2cs.dtbo \
++	spidev-disable.dtbo \
+ 	ssd1306.dtbo \
+ 	ssd1306-spi.dtbo \
+ 	ssd1331-spi.dtbo \
+diff --git a/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts b/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts
+index 97e5699a1af6..79b5c9ed283b 100644
+--- a/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts
++++ b/arch/arm/boot/dts/overlays/ina-evaluation-board-overlay.dts
+@@ -1,4 +1,4 @@
+-// Definitions for INA219 on I2Cbus
++// Definitions for INA219 on I2C bus and ADS1018+INA180 on SPI bus
+ /dts-v1/;
+ /plugin/;
+ 
+@@ -40,27 +40,27 @@ ina226: ina226@41 {
+ 	};
+ 	
+ 	fragment@2 {
+-		target = <&spi>;
++		target = <&spi1>;
+ 		__overlay__ {
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+ 
+ 			status = "okay";
+-			iio_adc@1{
++			iio_adc@0{
+ 				compatible = "ti,ads1018";
+-				reg = <0x1>;
++				reg = <0x0>;
+ 				#io-channel-cells = <1>;
+-				spi-max-frequency = <400000>; 
+-				spi-cpha;
++				spi-max-frequency = <100000>; 
++				//spi-cpha;
+ 
+ 				#address-cells = <1>;
+ 				#size-cells = <0>;
+ 				// Set up ADS1018 for AIN1
+ 				channel@5{
+ 					reg = <5>;      	// for AIN1
+-					ti,gain = <2>;  	// 4.096V range
++					ti,gain = <2>;  	// 2.048V range
+ 					ti,datarate = <5>; 	// 2.4kHz sampling
+-                };
++				};
+ 			};
+ 		};
+ 	};
+diff --git a/arch/arm/boot/dts/overlays/spi1-1cs-overlay.dts b/arch/arm/boot/dts/overlays/spi1-1cs-overlay.dts
+index ea2794bc5fd5..f06c2a2c6f2f 100644
+--- a/arch/arm/boot/dts/overlays/spi1-1cs-overlay.dts
++++ b/arch/arm/boot/dts/overlays/spi1-1cs-overlay.dts
+@@ -36,7 +36,8 @@ spidev1_0: spidev@0 {
+ 				reg = <0>;      /* CE0 */
+ 				#address-cells = <1>;
+ 				#size-cells = <0>;
+-				spi-max-frequency = <125000000>;
++				//spi-max-frequency = <125000000>;
++				spi-max-frequency = <400000>;
+ 				status = "okay";
+ 			};
+ 		};
+diff --git a/arch/arm/boot/dts/overlays/spidev-disable-overlay.dts b/arch/arm/boot/dts/overlays/spidev-disable-overlay.dts
+new file mode 100644
+index 000000000000..aacb23065aaa
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/spidev-disable-overlay.dts
+@@ -0,0 +1,23 @@
++// Disable spidev devices on SPI
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2835";
++
++	// disable spi-dev on spi0.0
++	fragment@0 {
++		target = <&spidev0>;
++		__overlay__ {
++			status = "disabled";
++		};
++	};
++	
++	// disable spi-dev on spi0.1
++	fragment@1 {
++		target = <&spidev1>;
++		__overlay__ {
++			status = "disabled";
++		};
++	};
++};
+diff --git a/arch/arm64/configs/bcmrpi3_defconfig b/arch/arm64/configs/bcmrpi3_defconfig
+index 4bfa5f6da184..6bfe289cb25f 100644
+--- a/arch/arm64/configs/bcmrpi3_defconfig
++++ b/arch/arm64/configs/bcmrpi3_defconfig
+@@ -1233,7 +1233,7 @@ CONFIG_BCM2835_MBOX=y
+ CONFIG_RASPBERRYPI_POWER=y
+ CONFIG_EXTCON=m
+ CONFIG_EXTCON_ARIZONA=m
+-CONFIG_IIO=m
++CONFIG_IIO=y
+ CONFIG_IIO_BUFFER_CB=m
+ CONFIG_MCP320X=m
+ CONFIG_MCP3422=m
+@@ -1400,3 +1400,10 @@ CONFIG_SCHED_TRACER=y
+ CONFIG_BLK_DEV_IO_TRACE=y
+ CONFIG_TI_ADS1018=m
+ CONFIG_INA2XX_ADC=m
++CONFIG_IIO_BUFFER=y
++CONFIG_IIO_KFIFO_BUF=y
++CONFIG_IIO_TRIGGERED_BUFFER=y
++CONFIG_IIO_CONFIGFS=y
++CONFIG_IIO_TRIGGER=y
++CONFIG_IIO_CONSUMERS_PER_TRIGGER=2
++CONFIG_IIO_SW_TRIGGER=y
+diff --git a/drivers/iio/adc/ti-ads1018.c b/drivers/iio/adc/ti-ads1018.c
+index 9fc8fcb13b9a..2e648a1ec1b8 100644
+--- a/drivers/iio/adc/ti-ads1018.c
++++ b/drivers/iio/adc/ti-ads1018.c
+@@ -31,6 +31,7 @@
+ #include <linux/iio/triggered_buffer.h>
+ #include <linux/iio/trigger_consumer.h>
+ 
++#define MODE8BIT
+ 
+ #define ADS1018_DRV_NAME "ads1018"
+ 
+@@ -202,6 +203,15 @@ struct ti_ads1018_state {
+ 	 */
+ 	bool 	conv_invalid;
+ 
++#ifdef MODE8BIT
++	/*
++	 * DMA (thus cache coherency maintenance) requires the
++	 * transfer buffers to live in their own cache lines.
++	 */
++	unsigned char	rx_buf[(ADS1018_CHANNELS + TI_ADS1018_TIMESTAMP_SIZE)*2]
++							____cacheline_aligned;
++	unsigned char	tx_buf[ADS1018_CHANNELS*2];
++#else    
+ 	/*
+ 	 * DMA (thus cache coherency maintenance) requires the
+ 	 * transfer buffers to live in their own cache lines.
+@@ -209,6 +219,8 @@ struct ti_ads1018_state {
+ 	__be16	rx_buf[ADS1018_CHANNELS + TI_ADS1018_TIMESTAMP_SIZE]
+ 							____cacheline_aligned;
+ 	__be16	tx_buf[ADS1018_CHANNELS];
++#endif
++    
+ };
+ 
+ 
+@@ -237,17 +249,34 @@ static int ti_ads1018_write_config_register(struct ti_ads1018_state *st, int val
+ {
+ 	int ret;
+ 
++#ifdef MODE8BIT
++    /* Write new value to the first 2 bytes of the 4 byte SPI transfer	*/
++	st->tx_buf[0] = (value & 0xFF00)>>8;
++	st->tx_buf[1] = value & 0xFF;
++	st->tx_buf[2] = 0x00;
++	st->tx_buf[3] = 0x00;
++    
++    printk(KERN_DEBUG "st->tx_buf %02x %02x\n",st->tx_buf[0], st->tx_buf[1]);
++
++#else    
+         /* Write new value to the first word of the 2 word SPI transfer	*/
+ 	st->tx_buf[0] = value;
+ 	st->tx_buf[1] = 0x0000;
+-
++#endif
+ 	ret = spi_sync(st->spi, &st->scan_single_msg);
++    printk(KERN_DEBUG "spi ti_ads1018_write_config_register() value %04x, ret %d\n",value, ret);
+ 	if (ret)
+ 		return ret;
+ 
+-        /* Update the state current config based on result of this write */
++#ifdef MODE8BIT
++    /* Update the state current config based on result of this write */
++	st->current_config=(st->rx_buf[3] << 8);
++	st->current_config|=st->rx_buf[2];
++    printk(KERN_DEBUG "st->current_config %04x\n",st->current_config);
++#else
++    /* Update the state current config based on result of this write */
+ 	st->current_config=st->rx_buf[1];
+-	
++#endif	
+ 	return 0;
+ }
+ 
+@@ -290,22 +319,33 @@ int ads1018_get_adc_result(struct ti_ads1018_state *st, int chan, int *val)
+ 
+         old = st->current_config;
+ 
+-        /* For just a data read cmd is 0x0000
++
++    /* For just a data read cmd is 0x0000
+ 	 * Assumption is that previously the configuration has been set to
+ 	 * select channel, gain and sampling frequency
+ 	 */ 
+ 	cmd = 0x0000;
++#ifdef MODE8BIT
++	st->tx_buf[0] = (cmd & 0xFF00)>>8;
++	st->tx_buf[1] = cmd & 0xFF;
++	st->tx_buf[2] = 0x00;
++	st->tx_buf[3] = 0x00;
++#else
+ 	//cmd=st->settings | (chan << 12);
+ 	st->tx_buf[0] = cmd;
+ 	st->tx_buf[1] = 0x0000;
+-
++#endif
+ 	ret = spi_sync(st->spi, &st->scan_single_msg);
+ 
+ 	if (ret)
+ 		return ret;
+ 
+-	*val = st->rx_buf[0];
+- 
++#ifdef MODE8BIT
++	*val=(st->rx_buf[1] << 8);
++	*val|=st->rx_buf[0];
++#else    
++    *val = st->rx_buf[0];
++#endif 
+ 
+       
+ 	pga = st->channel_data[chan].pga;
+@@ -693,7 +733,24 @@ static int ti_ads1018_probe(struct spi_device *spi)
+             	config &= ~(TI_ADS1018_MUX_MASK << TI_ADS1018_MUX_SHIFT);
+ 		config |= (i << TI_ADS1018_MUX_SHIFT);
+           }
+-
++#ifdef MODE8BIT
++        /*
++         * Always use 4 * 8 bit transfer mode so that the status is read back
++         * in the second 16 bit word. This allows us to track when updated
++         * configuration needs to be applied.
++         */ 
++          
++	st->scan_single_xfer[0].tx_buf = &st->tx_buf[0];
++	st->scan_single_xfer[0].rx_buf = &st->rx_buf[0];
++	st->scan_single_xfer[0].len = 4;
++	st->scan_single_xfer[0].cs_change = 0; 
++	st->scan_single_xfer[0].bits_per_word = 8; 
++	st->scan_single_xfer[1].tx_buf = &st->tx_buf[2];
++	st->scan_single_xfer[1].rx_buf = &st->rx_buf[2];
++	st->scan_single_xfer[1].len = 4;
++	st->scan_single_xfer[1].cs_change = 0; 
++	st->scan_single_xfer[1].bits_per_word = 8; 
++#else
+         /*
+          * Always use 2 * 16 bit transfer mode so that the status is read back
+          * in the second 16 bit word. This allows us to track when updated
+@@ -710,7 +767,7 @@ static int ti_ads1018_probe(struct spi_device *spi)
+ 	st->scan_single_xfer[1].len = 2;
+ 	st->scan_single_xfer[1].cs_change = 0; 
+ 	st->scan_single_xfer[1].bits_per_word = 16; 
+-
++#endif
+ 	spi_message_init_with_transfers(&st->scan_single_msg,
+ 					st->scan_single_xfer, 2);
+ 
+-- 
+2.25.1
+

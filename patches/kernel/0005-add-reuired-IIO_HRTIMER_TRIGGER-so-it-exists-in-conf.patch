@@ -1,0 +1,22 @@
+From 3ad67e55e1e1a13219efe597558abca1f729643d Mon Sep 17 00:00:00 2001
+From: Iain Hunter <drhunter95@gmail.com>
+Date: Fri, 8 Oct 2021 12:20:13 +0100
+Subject: [PATCH 5/7] add reuired IIO_HRTIMER_TRIGGER so it exists in configfs
+ to be written
+
+---
+ arch/arm64/configs/bcmrpi3_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/configs/bcmrpi3_defconfig b/arch/arm64/configs/bcmrpi3_defconfig
+index 6bfe289cb25f..1a4bb971628f 100644
+--- a/arch/arm64/configs/bcmrpi3_defconfig
++++ b/arch/arm64/configs/bcmrpi3_defconfig
+@@ -1407,3 +1407,4 @@ CONFIG_IIO_CONFIGFS=y
+ CONFIG_IIO_TRIGGER=y
+ CONFIG_IIO_CONSUMERS_PER_TRIGGER=2
+ CONFIG_IIO_SW_TRIGGER=y
++CONFIG_IIO_HRTIMER_TRIGGER=y
+-- 
+2.25.1
+

@@ -1,0 +1,12 @@
+[Unit]
+Description=Current Measurement Service
+After=time-sync.target
+
+[Service]
+WorkingDirectory=/opt
+Type=forking
+ExecStart=/opt/check-free-disk.sh
+SyslogIdentifier=Current Measurement
+
+[Install]
+WantedBy=multi-user.target

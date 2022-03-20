@@ -1,0 +1,2 @@
+# ensure iio devices are owned by pi so that they can be read by user space apps
+KERNEL=="iio:device[0-9]*", OWNER="pi", GROUP="pi", PROGRAM="/bin/sh -c 'chown -R pi:pi /sys/$devpath'" 

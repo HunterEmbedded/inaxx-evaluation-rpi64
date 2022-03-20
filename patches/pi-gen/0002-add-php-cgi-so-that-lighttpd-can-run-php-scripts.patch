@@ -1,0 +1,22 @@
+From 0fde2153bc5e58389062b98bae72a000cf8d76ad Mon Sep 17 00:00:00 2001
+From: Iain Hunter <drhunter95@gmail.com>
+Date: Sun, 13 Feb 2022 13:09:09 +0000
+Subject: [PATCH 2/2] add php-cgi so that lighttpd can run php scripts
+
+---
+ stage2/01-sys-tweaks/00-packages | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/stage2/01-sys-tweaks/00-packages b/stage2/01-sys-tweaks/00-packages
+index f417fb4..459ee42 100644
+--- a/stage2/01-sys-tweaks/00-packages
++++ b/stage2/01-sys-tweaks/00-packages
+@@ -34,3 +34,5 @@ udisks2
+ unzip zip p7zip-full
+ libsqlite3-dev
+ lighttpd
++php-cgi
++
+-- 
+2.25.1
+
