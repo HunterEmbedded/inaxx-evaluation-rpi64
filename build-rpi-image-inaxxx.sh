@@ -5,6 +5,12 @@
 # an SD card
 # It has been tested on RPi3B+
 
+# Assumption is that if you have cloned the file then git is already installed.
+# git must also have been configured with 
+#  git config --global user.email "you@example.com"
+#  git config --global user.name "Your Name"
+
+
 if [ ! -e packages-installed ]
 then
     sudo apt-get update
@@ -28,13 +34,14 @@ else
               exit
     fi          
     
-    
+    #taken from https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-20-04
     sudo apt install apt-transport-https ca-certificates curl software-properties-common
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
     sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
     apt-cache policy docker-ce
     sudo apt install docker-ce
-    sudo systemctl status docker
+    
+    #sudo systemctl status docker
 fi    
     
 if [ ! -e pi-gen-tools.installed ]; then
