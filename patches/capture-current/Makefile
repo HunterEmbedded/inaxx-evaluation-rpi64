@@ -1,4 +1,4 @@
-CFLAGS = -Wall -g -pthread 
+CFLAGS = -Wall -g -pthread -isysroot $(ROOTFSDIR) -I usr/include
 LDFLAGS = -Wl,--sysroot=$(ROOTFSDIR) -L/lib/arm-linux-gnueabihf 
 LDLIBS = -lrt -lsqlite3
 PROGS = capture-current-iio
