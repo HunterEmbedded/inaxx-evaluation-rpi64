@@ -37,8 +37,9 @@ Build script is for Ubuntu 20.04 but with instructions on how to modify docker i
 $ cd inaxx-evaluation-rpi64 
 inaxx-evaluation-rpi64$ ./build-rpi-image-inaxxx.sh
 ```
-The output of the build process is an SD card image file 
-    raspbian-image/<BUILD DATE>-Raspbian-INAxxx-lite.img
+The output of the build process is an SD card image file which contains the actual filesystem build date (eg 2022-03-21-Raspbian-INAxxx-lite.img) 
+
+`raspbian-image/BUILD-DATE-Raspbian-INAxxx-lite.img`
 
 ## To create the SD card: 
 Use Balena Etcher (https://www.balena.io/etcher/) to write the IMG file to SD card.
