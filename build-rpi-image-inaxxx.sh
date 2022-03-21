@@ -14,7 +14,7 @@
 if [ ! -e packages-installed ]
 then
     sudo apt-get update
-    sudo apt-get install git bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64
+    sudo apt-get install git bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64 u-boot-tools
     touch packages-installed
 fi
 
