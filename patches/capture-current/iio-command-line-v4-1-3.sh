@@ -44,7 +44,7 @@ cd /sys/bus/iio/devices/iio\:${ads1018device}/
 echo trigger1 > trigger/current_trigger 
 # enable the voltage0 channel to be AIN0 and set parameters
 echo 1 > scan_elements/in_voltage0_en
-echo 10 > in_voltage0_sampling_frequency
+echo 128 > in_voltage0_sampling_frequency
 # scale is specified as a factor of the default of 2.048V
 echo 2 > in_voltage0_scale
 # enable collection of timestamps
