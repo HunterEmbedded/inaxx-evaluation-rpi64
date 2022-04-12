@@ -1,16 +1,16 @@
-# inaxx-evaluation-rpi64
-RPi64 build for INAxxx current measurement evaluation hat. Currently script only supports RPi 3B+.
+# inaxx-rpi64-evaluation
+RPi64 build for INAxxx current measurement evaluation hat. Currently script supports RPi 3 and 4.
 
 
-This package will build an SD card img for a RPi with a 64 bit filesystem and support for the Hunter Embedded Current Measurement INAXXX Evaluation Board (v4.1.3). This board is available on [Amazon](https://www.amazon.co.uk/INAxxx-Current-Measurement-Evaluation-Cape/dp/B09TYTXM68) .
+This package will build an SD card img for a RPi with a 64 bit filesystem and support for the [Hunter Embedded Current Measurement INAXXX Evaluation Board (v4.1.3)](http://www.hunterembedded.co.uk/inaxxx-evaluation-board-for-raspberry-pi-and-beaglebone/). This board is available on [Amazon](https://www.amazon.co.uk/INAxxx-Current-Measurement-Evaluation-Cape/dp/B09TYTXM68).
 
 This board provides the following options for measuring current:
 
-- INA219 with a 0.33ohm 1% shunt to measure currents in range +/- 970mA
-- INA180A2 with a 0.082ohm 1% shunt + ADS1018 ADC with FSR of 4.096V to measure currents in range 0-1024mA
+- INA219 with a 0.33ohm 1% shunt to measure currents in range +/- 970mA. There is no input filter on the INA219.
+- INA180A2 with a 0.082ohm 1% shunt + ADS1018 ADC with FSR of 4.096V to measure currents in range 0-1024mA. The ADS1018 has an input low pass filter with a cut off frequency of 1682Hz.
 - The footprint for an INA226 is also present but not populated due to component shortage.
 
-All shunts are Panasonic ERJ14s
+All shunts are Panasonic ERJ14s. The schematics are also available on [github](https://github.com/HunterEmbedded/inaxxx-evaluation-schematics).
 
 
 
@@ -33,6 +33,11 @@ Assumption is that git is installed and configured already.
 Build script is for Ubuntu 20.04 but with instructions on how to modify docker installation for other versions. The build can take over an hours as the filesystem is created. Answer yes to each installation approval request.
 
 ## To build: 
+The build script defaults to a RPi 4 build. To build for RPi3 change the value of variable PI_DEFCONFIG to bcmrpi3_defconfig.
+```
+PI_DEFCONFIG=bcmrpi3_defconfig
+```
+Run the build script.
 ```   
 $ cd inaxx-evaluation-rpi64 
 inaxx-evaluation-rpi64$ ./build-rpi-image-inaxxx.sh
@@ -46,7 +51,8 @@ Use Balena Etcher (https://www.balena.io/etcher/) to write the IMG file to SD ca
 
 
 ## To run:
-There are two examples to help understand the application
+Log in via SSH (address allocated by your DHCP server) or via a terminal over serial. Use the username "pi" and password "raspberry". 
+There are two examples to help understand the application. These must be run using `sudo` to access the IIO sysfs.
 - /opt/iio-command-line-v4.1.3.sh controls the IIO via sysfs
 - /opt/iio-app-test-v4.1.3.sh calls the C app to capture using IIO and store to a local database 
     
