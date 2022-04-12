@@ -30,7 +30,7 @@ $ git clone https://github.com/HunterEmbedded/inaxx-evaluation-rpi64
 
 Assumption is that git is installed and configured already.
 
-Build script is for Ubuntu 20.04 but with instructions on how to modify docker installation for other versions. The build can take over an hours as the filesystem is created. Answer yes to each installation approval request.
+Build script is for Ubuntu 20.04 but with instructions on how to modify docker installation for other versions. The build can take over an hour as the filesystem is created. Answer yes to each installation approval request.
 
 ## To build: 
 The build script defaults to a RPi 4 build. To build for RPi3 change the value of variable PI_DEFCONFIG to bcmrpi3_defconfig.
