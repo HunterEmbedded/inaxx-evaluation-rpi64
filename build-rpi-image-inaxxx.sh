@@ -3,12 +3,30 @@
 # This script builds a 64 bit version of linux kernel and then 
 # adds it to a Raspbian image to create a .img file that can be written to 
 # an SD card
-# It has been tested on RPi3B+
+# It has been tested on RPi3B+ & RPi4B
 
 # Assumption is that if you have cloned the file then git is already installed.
 # git must also have been configured with 
 #  git config --global user.email "you@example.com"
 #  git config --global user.name "Your Name"
+
+
+#####################################################################################
+# Need to choose correct config for the kernel for your board.
+# One of these must be chosen:
+#  bcmrpi3_defconfig for Pi3
+#  bcm2711_defconfig for Pi4
+#####################################################################################
+PI_DEFCONFIG=bcmrpi3_defconfig
+#PI_DEFCONFIG=bcm2711_defconfig
+
+if [ -z "${PI_DEFCONFIG}" ] 
+then
+   echo "PI_DEFCONFIG must be set in the script"
+   exit
+fi   
+
+
 
 
 if [ ! -e packages-installed ]
@@ -165,11 +183,11 @@ if [ ! -e kernel.built ]
 then
    cd linux || exit
    # do a full clean, uncomment if required
-   #make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} distclean || exit
+   make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} distclean || exit
 
    # configure 
    KERNEL=kernel8
-   make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} bcmrpi3_defconfig || exit
+   make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} ${PI_DEFCONFIG} || exit
 
    #build kernel, modules and device tree files
    make -j 10 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} Image dtbs modules || exit
